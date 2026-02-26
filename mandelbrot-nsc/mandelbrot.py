@@ -3,22 +3,37 @@ import matplotlib.pyplot as plt
 import time
 
 def mandelbrot(rows, cols, max_iter=200):
+    # Complex grid
     x = np.linspace(-2, 1, cols)
     y = np.linspace(-1.5, 1.5, rows)
-    screen = x + y[:, None]*1j  
+    C = x + y[:, None] * 1j
 
-    iter_count = np.zeros((rows, cols), dtype=np.int16)
+    Z = np.zeros_like(C, dtype=np.complex128)
+    iter_count = np.zeros(C.shape, dtype=np.int16)
 
-    for i in range(rows):
-        for j in range(cols):
-            z = 0 + 0j
-            for k in range(max_iter):
-                z = z**2 + screen[i, j]
-                if abs(z) > 2:
-                    break
-            iter_count[i, j] = k 
+    # Boolean mask: True where still computing
+    mask = np.ones(C.shape, dtype=bool)
+
+    for k in range(max_iter):
+        # Apply iteration only to active points
+        Z[mask] = Z[mask]**2 + C[mask]
+
+        # Points that escaped in this iteration
+        escaped = np.abs(Z) > 2
+
+        # Store iteration number for newly escaped points
+        newly_escaped = escaped & mask
+        iter_count[newly_escaped] = k
+
+        # Remove escaped points from further computation
+        mask &= ~escaped
+
+        # Early exit if all points escaped
+        if not mask.any():
+            break
 
     return iter_count
+
 
 if __name__ == "__main__":
     rows, cols = 1000, 1000
@@ -26,9 +41,8 @@ if __name__ == "__main__":
     mandelbrot_image = mandelbrot(rows, cols)
     end = time.time()
 
-    final_time = end-start
-    print(final_time)
+    print(end - start)
 
-    plt.imshow(mandelbrot_image, cmap='hot', interpolation='nearest')
+    plt.imshow(mandelbrot_image, cmap='twilight', interpolation='nearest')
     plt.axis('off')
     plt.show()
